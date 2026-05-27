@@ -1,13 +1,17 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useAccount } from "wagmi";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, Zap, CheckCircle2 } from "lucide-react";
+import { Shield, Zap, CheckCircle2, Wallet } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loginDemo } = useAuth();
+  const { openConnectModal } = useConnectModal();
+  const { address, isConnected } = useAccount();
 
   // Redirect if already authenticated (either wallet or demo)
   useEffect(() => {
@@ -15,6 +19,13 @@ const Login = () => {
       navigate("/", { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  // Once a wallet connects, send the user to the dashboard
+  useEffect(() => {
+    if (isConnected && address && !isAuthenticated) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isConnected, address, isAuthenticated, navigate]);
 
   const handleLoginDemo = () => {
     loginDemo();
@@ -80,6 +91,15 @@ const Login = () => {
                 <p className="text-xs text-muted-foreground text-center">
                   Demo mode lets you browse listings, save favorites, and send inquiries without an account
                 </p>
+                <Button
+                  onClick={openConnectModal}
+                  disabled={!openConnectModal}
+                  variant="outline"
+                  className="w-full border-2 border-indigo-200 hover:bg-indigo-50 text-indigo-700 font-semibold py-6 rounded-xl text-lg"
+                >
+                  <Wallet className="w-5 h-5 mr-2" />
+                  Connect Wallet
+                </Button>
               </div>
             </CardContent>
           </Card>

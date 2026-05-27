@@ -1,5 +1,6 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from "react";
 import { useWallet } from "./WalletContext";
+import { formatAddress } from "@/lib/utils";
 
 interface User {
   id: string;
@@ -13,6 +14,7 @@ interface AuthContextType {
   loading: boolean;
   logout: () => void;
   loginDemo: () => void;
+  loginWeb3: (address: string) => void;
   isAuthenticated: boolean;
 }
 
@@ -31,23 +33,40 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const { isConnected, disconnect } = useWallet();
+  const { address, isConnected, disconnect } = useWallet();
   const [demoUser, setDemoUser] = useState<User | null>(null);
+  const [walletUser, setWalletUser] = useState<User | null>(null);
 
-  // Check for demo mode on mount
   useEffect(() => {
-      const token = localStorage.getItem("token");
-        if (token === "demo-token") {
+    const token = localStorage.getItem("token");
+    if (token === "demo-token") {
       setDemoUser({
-            id: "demo-user",
-            name: "Demo User",
+        id: "demo-user",
+        name: "Demo User",
         isDemo: true,
       });
     }
   }, []);
 
-  // Since wallet connection is disabled, always use demo user if available
-  const user: User | null = demoUser;
+  // Reactively sync wallet connection state to walletUser
+  useEffect(() => {
+    if (isConnected && address) {
+      setWalletUser({
+        id: address,
+        address,
+        name: formatAddress(address),
+      });
+    } else {
+      setWalletUser((prev) => {
+        if (prev) {
+          localStorage.removeItem("token");
+        }
+        return null;
+      });
+    }
+  }, [isConnected, address]);
+
+  const user: User | null = demoUser ?? walletUser;
 
   const loginDemo = () => {
     localStorage.setItem("token", "demo-token");
@@ -58,9 +77,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
   };
 
+  const loginWeb3 = (addr: string) => {
+    localStorage.setItem("token", "wallet-token");
+    setWalletUser({
+      id: addr,
+      address: addr,
+      name: formatAddress(addr),
+    });
+  };
+
   const logout = () => {
-      localStorage.removeItem("token");
+    localStorage.removeItem("token");
     setDemoUser(null);
+    setWalletUser(null);
     if (isConnected) {
       disconnect();
     }
@@ -71,9 +100,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loading: false,
     logout,
     loginDemo,
-    isAuthenticated: !!demoUser,
+    loginWeb3,
+    isAuthenticated: !!demoUser || !!walletUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-

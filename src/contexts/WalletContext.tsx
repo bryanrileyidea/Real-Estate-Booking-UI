@@ -1,4 +1,5 @@
 import { createContext, useContext, ReactNode } from "react";
+import { useAccount, useDisconnect, useChainId, useSwitchChain } from "wagmi";
 import { formatAddress } from "@/lib/utils";
 
 interface WalletContextType {
@@ -26,15 +27,19 @@ interface WalletProviderProps {
 }
 
 export const WalletProvider = ({ children }: WalletProviderProps) => {
-  // Wallet functionality disabled - always return disconnected state
-  const value = {
-    address: undefined,
-    isConnected: false,
-    isConnecting: false,
-    chainId: undefined,
-    disconnect: () => {},
-    switchChain: () => {},
-    formattedAddress: undefined,
+  const { address, isConnected, isConnecting } = useAccount();
+  const { disconnect } = useDisconnect();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
+
+  const value: WalletContextType = {
+    address,
+    isConnected,
+    isConnecting,
+    chainId,
+    disconnect,
+    switchChain: (id: number) => switchChain({ chainId: id }),
+    formattedAddress: address ? formatAddress(address) : undefined,
   };
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
